@@ -1,0 +1,626 @@
+---
+title: "DSO599 Final Project"
+author: "Rachel Sung"
+date: "9/26/2020"
+output: html_document
+---
+
+### Install required packages
+```{r}
+#install.packages("ggplot2")
+library("ggplot2")
+#install.packages("sentimentr")
+library('sentimentr')
+#install.packages('syuzhet')
+library('syuzhet')
+#install.packages("tm")
+library("tm")
+#install.packages("NLP")
+library("NLP")
+#install.packages("wordcloud")
+library("wordcloud")
+#install.packages("RColorBrewer")
+library("RColorBrewer")
+library("readxl")
+#install.packages("dplyr")
+library("dplyr")
+```
+
+### Import data
+```{r}
+data = read_excel("/Users/rachel/Downloads/MIA vs BOS - Game 5 - Combined Data V3.xlsx")
+View(data)
+```
+
+### Seperate data by Category
+```{r}
+data_heat = data %>%
+  filter(Category == "Heat")
+
+data_celtics = data %>%
+  filter(Category == "Celtics")
+
+data_mixed = data %>%
+  filter(Category == "Mixed")
+```
+
+### Emotion Vectors
+```{r}
+boston_nrc_sentiment <- get_nrc_sentiment(data_celtics$tweet)
+miami_nrc_sentiment <- get_nrc_sentiment(data_heat$tweet)
+mixed_nrc_sentiment <- get_nrc_sentiment(data_mixed$tweet)
+```
+
+### Visualize
+```{r}
+#install.packages("RColorBrewer")
+library("RColorBrewer")
+```
+
+```{r}
+barplot(sort(colSums(prop.table(boston_nrc_sentiment[, 1:8]))),
+          horiz = TRUE,
+          cex.names = 0.7, 
+          las = 1, 
+          main = "Emotions in Boston Celtics Tweets", xlab="Percentage",
+          col = c("#E69F00", "#E69F00","#009E73","#E69F00","#E69F00","#009E73","#009E73","#009E73"))
+```
+```{r}
+barplot(
+  sort(colSums(prop.table(miami_nrc_sentiment[, 1:8]))), 
+  horiz = TRUE, 
+  cex.names = 0.7, 
+  las = 1, 
+  main = "Emotions in Miami Heat Tweets", xlab="Percentage",
+  col = c("red", "#E69F00","#E69F00","red","red","#E69F00","#E69F00","red")
+)
+```
+```{r}
+barplot(
+  sort(colSums(prop.table(mixed_nrc_sentiment[, 1:8]))), 
+  horiz = TRUE, 
+  cex.names = 0.7, 
+  las = 1, 
+  main = "Emotions in Mixed Tweets", xlab="Percentage",
+  col = c("blue", "blue","#E69F00","#E69F00","#E69F00","blue","#E69F00","blue")
+)
+```
+
+### Subtracting Emotions
+```{r}
+barplot(
+  sort(colSums(prop.table(boston_nrc_sentiment[, 1:8])) - colSums(prop.table(miami_nrc_sentiment[, 1:8]))), 
+  horiz = TRUE, 
+  cex.names = 0.7, 
+  las = 1, 
+  main = "Boston Emotions - Miami Emotions", xlab="Percentage",
+  col = c("#E69F00", "#E69F00","#E69F00","#E69F00","blue","blue","blue","blue")
+)
+```
+
+### Positive-Negative Emotions
+```{r}
+barplot(
+  sort(colSums(prop.table(boston_nrc_sentiment[, 9:10]))), 
+  horiz = TRUE, 
+  cex.names = 0.7, 
+  las = 1, 
+  main = "Pos-Neg Emotions: Boston", xlab="Percentage",
+  col = c("#E69F00","green")
+)
+```
+```{r}
+barplot(
+  sort(colSums(prop.table(miami_nrc_sentiment[, 9:10]))), 
+  horiz = TRUE, 
+  cex.names = 0.7, 
+  las = 1, 
+  main = "Pos-Neg Emotions: Miami", xlab="Percentage",
+  col = c("#E69F00","red")
+)
+```
+```{r}
+barplot(
+  sort(colSums(prop.table(mixed_nrc_sentiment[, 9:10]))), 
+  horiz = TRUE, 
+  cex.names = 0.7, 
+  las = 1, 
+  main = "Pos-Neg Emotions: Mixed", xlab="Percentage",
+  col = c("blue","#E69F00")
+)
+```
+
+### Function for plotting wordcloud
+```{r}
+f_plot_wordcloud <- function (tweet_texts, nrc_sentiment) {
+  
+  all = c(
+    paste(tweet_texts[nrc_sentiment$anger > 0], collapse=" "),
+    paste(tweet_texts[nrc_sentiment$anticipation > 0], collapse=" "),
+    paste(tweet_texts[nrc_sentiment$disgust > 0], collapse=" "),
+    paste(tweet_texts[nrc_sentiment$fear > 0], collapse=" "),
+    paste(tweet_texts[nrc_sentiment$joy > 0], collapse=" "),
+    paste(tweet_texts[nrc_sentiment$sadness > 0], collapse=" "),
+    paste(tweet_texts[nrc_sentiment$surprise > 0], collapse=" "),
+    paste(tweet_texts[nrc_sentiment$trust > 0], collapse=" ")
+  )
+  all <- removeWords(all, stopwords("english"))
+  # create corpus
+  corpus <- Corpus(VectorSource(all))
+  #
+  # create term-document matrix
+  tdm <- TermDocumentMatrix(corpus)
+  #
+  # convert as matrix
+  tdm <- as.matrix(tdm)
+  tdm1 <- tdm[nchar(rownames(tdm)) < 15,]
+  #
+  # add column names
+  colnames(tdm) = c('anger', 'anticipation', 'disgust', 'fear', 'joy', 'sadness', 'surprise', 'trust')
+  colnames(tdm1) <- colnames(tdm)
+  comparison.cloud(tdm1, random.order=FALSE,
+                   colors = c("#00B2FF", "red", "#FF0099", "#6600CC", "green", "orange", "blue", "brown"), title.size=1.8, max.words=300, scale=c(2,.8),rot.per=0.4)
+}
+```
+
+### Wordcloud
+```{r}
+## Boston
+f_plot_wordcloud(data_celtics$tweet,boston_nrc_sentiment)
+```
+```{r}
+# Miami
+f_plot_wordcloud(data_heat$tweet,miami_nrc_sentiment)
+```
+```{r}
+# Mixed
+f_plot_wordcloud(data_mixed$tweet,mixed_nrc_sentiment)
+```
+
+### Seperate data by Time Frame
+```{r}
+data_before = data %>%
+  filter(data$`Time Frame` == "Before Game")
+
+data_half = data %>%
+  filter(data$`Time Frame` == "Halftime")
+
+data_post = data %>%
+  filter(data$`Time Frame` == "Post Game")
+
+data_Q1 = data %>%
+  filter(data$`Time Frame` == "Q1")
+
+data_Q2 = data %>%
+  filter(data$`Time Frame` == "Q2")
+
+data_Q3 = data %>%
+  filter(data$`Time Frame` == "Q3")
+
+data_Q4 = data %>%
+  filter(data$`Time Frame` == "Q4")
+```
+
+### Emotion Vector
+```{r}
+before_nrc_sentiment <- get_nrc_sentiment(data_before$tweet)
+half_nrc_sentiment <- get_nrc_sentiment(data_half$tweet)
+post_nrc_sentiment <- get_nrc_sentiment(data_post$tweet)
+Q1_nrc_sentiment <- get_nrc_sentiment(data_Q1$tweet)
+Q2_nrc_sentiment <- get_nrc_sentiment(data_Q2$tweet)
+Q3_nrc_sentiment <- get_nrc_sentiment(data_Q3$tweet)
+Q4_nrc_sentiment <- get_nrc_sentiment(data_Q4$tweet)
+```
+
+### Visualize
+```{r}
+barplot(
+  sort(colSums(prop.table(before_nrc_sentiment[, 1:8]))), 
+  horiz = TRUE, 
+  cex.names = 0.7, 
+  las = 1, 
+  main = "Emotions in Tweets Before Game", xlab="Percentage",
+  col = c("#E69F00","#E69F00","#E69F00","#E69F00","blue","blue","blue","blue")
+)
+```
+```{r}
+barplot(
+  sort(colSums(prop.table(half_nrc_sentiment[, 1:8]))), 
+  horiz = TRUE, 
+  cex.names = 0.7, 
+  las = 1, 
+  main = "Emotions in Tweets Half Game", xlab="Percentage",
+  col = c("#E69F00","blue","#E69F00","#E69F00","blue","#E69F00","blue","blue")
+)
+```
+```{r}
+barplot(
+  sort(colSums(prop.table(post_nrc_sentiment[, 1:8]))), 
+  horiz = TRUE, 
+  cex.names = 0.7, 
+  las = 1, 
+  main = "Emotions in Tweets Post Game", xlab="Percentage",
+  col = c("#E69F00","blue","#E69F00","blue","#E69F00","#E69F00","blue","blue")
+) 
+```
+```{r}
+barplot(
+  sort(colSums(prop.table(Q1_nrc_sentiment[, 1:8]))), 
+  horiz = TRUE, 
+  cex.names = 0.7, 
+  las = 1, 
+  main = "Emotions in Tweets Q1", xlab="Percentage",
+  col = c("#E69F00","#E69F00","blue","#E69F00","#E69F00","blue","blue","blue")
+)
+```
+```{r}
+barplot(
+  sort(colSums(prop.table(Q2_nrc_sentiment[, 1:8]))), 
+  horiz = TRUE, 
+  cex.names = 0.7, 
+  las = 1, 
+  main = "Emotions in Tweets Q2", xlab="Percentage",
+  col = c("blue","blue","#E69F00","blue","#E69F00","#E69F00","blue","#E69F00")
+)
+```
+```{r}
+barplot(
+  sort(colSums(prop.table(Q3_nrc_sentiment[, 1:8]))), 
+  horiz = TRUE, 
+  cex.names = 0.7, 
+  las = 1, 
+  main = "Emotions in Tweets Q3", xlab="Percentage",
+  col = c("blue","#E69F00","#E69F00","blue","#E69F00","#E69F00","blue","blue")
+)
+```
+```{r}
+barplot(
+  sort(colSums(prop.table(Q4_nrc_sentiment[, 1:8]))), 
+  horiz = TRUE, 
+  cex.names = 0.7, 
+  las = 1, 
+  main = "Emotions in Tweets Q4", xlab="Percentage",
+  col = c("blue","blue","#E69F00","blue","blue","#E69F00","#E69F00","#E69F00")
+)
+```
+
+### Wordcloud
+```{r}
+f_plot_wordcloud(data_before$tweet,before_nrc_sentiment)
+f_plot_wordcloud(data_half$tweet,half_nrc_sentiment)
+f_plot_wordcloud(data_post$tweet,post_nrc_sentiment)
+f_plot_wordcloud(data_Q1$tweet,Q1_nrc_sentiment)
+f_plot_wordcloud(data_Q2$tweet,Q2_nrc_sentiment)
+f_plot_wordcloud(data_Q3$tweet,Q3_nrc_sentiment)
+f_plot_wordcloud(data_Q4$tweet,Q4_nrc_sentiment)
+```
+
+### If Timeout/Non-timeout will influence emotions in tweets
+```{r}
+data_non_timeout = data %>%
+  filter(data$`Timeout/Instant Replay` == "Non-Timeout")
+
+data_timeout = data %>%
+  filter(data$`Timeout/Instant Replay` == "Timeout")
+
+data_replay = data %>%
+  filter(data$`Timeout/Instant Replay` == "Instant Replay/Timeout")
+
+non_timeout_nrc_sentiment <- get_nrc_sentiment(data_non_timeout$tweet)
+timeout_nrc_sentiment <- get_nrc_sentiment(data_timeout$tweet)
+replay_nrc_sentiment <- get_nrc_sentiment(data_replay$tweet)
+
+```
+
+```{r}
+par(mfrow = c(3, 1))
+barplot(
+  sort(colSums(prop.table(non_timeout_nrc_sentiment[, 9:10]))), 
+  horiz = TRUE, 
+  cex.names = 0.7, 
+  las = 1, 
+  main = "Emotions in Tweets Non-Timeout", xlab="Percentage",
+  col = c("#E69F00","blue")
+)
+
+barplot(
+  sort(colSums(prop.table(timeout_nrc_sentiment[, 9:10]))), 
+  horiz = TRUE, 
+  cex.names = 0.7, 
+  las = 1, 
+  main = "Emotions in Tweets Timeout", xlab="Percentage",
+  col = c("#E69F00","blue")
+)
+
+barplot(
+  sort(colSums(prop.table(replay_nrc_sentiment[, 9:10]))), 
+  horiz = TRUE, 
+  cex.names = 0.7, 
+  las = 1, 
+  main = "Emotions in Tweets Instant Replay", xlab="Percentage",
+  col = c("blue","#E69F00")
+)
+```
+
+
+
+### If referee during game will influence emotions in tweets
+```{r}
+data_ref_yes = data %>%
+  filter(data$`Ref Comment` == "Yes")
+
+data_ref_no = data %>%
+  filter(data$`Ref Comment` == "No")
+
+
+ref_yes_nrc_sentiment <- get_nrc_sentiment(data_ref_yes$tweet)
+ref_no_nrc_sentiment <- get_nrc_sentiment(data_ref_no$tweet)
+
+```
+
+```{r}
+par(mfrow = c(2, 1))
+barplot(
+  sort(colSums(prop.table(ref_yes_nrc_sentiment[, 9:10]))), 
+  horiz = TRUE, 
+  cex.names = 0.7, 
+  las = 1, 
+  main = "Emotions in Tweets Referee Happens", xlab="Percentage",
+  col = c("blue","#E69F00")
+)
+
+barplot(
+  sort(colSums(prop.table(ref_no_nrc_sentiment[, 9:10]))), 
+  horiz = TRUE, 
+  cex.names = 0.7, 
+  las = 1, 
+  main = "Emotions in Tweets No Referee", xlab="Percentage",
+  col = c("#E69F00","blue")
+)
+```
+
+
+
+### Understand characters of fans of each team:
+```{r}
+# Boston
+boston_pre = data_celtics%>%
+  filter(data_celtics$`Time Frame` == "Before Game")
+
+boston_Q1 = data_celtics%>%
+  filter(data_celtics$`Time Frame` == "Q1")
+
+boston_Q2 = data_celtics%>%
+  filter(data_celtics$`Time Frame` == "Q2")
+
+boston_half = data_celtics%>%
+  filter(data_celtics$`Time Frame` == "Halftime")
+
+boston_Q3 = data_celtics%>%
+  filter(data_celtics$`Time Frame` == "Q3")
+
+boston_Q4 = data_celtics%>%
+  filter(data_celtics$`Time Frame` == "Q4")
+
+boston_post = data_celtics%>%
+  filter(data_celtics$`Time Frame` == "Post Game")
+```
+
+```{r}
+b_before_nrc_sentiment <- get_nrc_sentiment(boston_pre$tweet)
+b_half_nrc_sentiment <- get_nrc_sentiment(boston_half$tweet)
+b_post_nrc_sentiment <- get_nrc_sentiment(boston_post$tweet)
+b_Q1_nrc_sentiment <- get_nrc_sentiment(boston_Q1$tweet)
+b_Q2_nrc_sentiment <- get_nrc_sentiment(boston_Q2$tweet)
+b_Q3_nrc_sentiment <- get_nrc_sentiment(boston_Q3$tweet)
+b_Q4_nrc_sentiment <- get_nrc_sentiment(boston_Q4$tweet)
+```
+
+
+```{r}
+par(mfrow = c(2, 4))
+p1 = barplot(
+  sort(colSums(prop.table(b_before_nrc_sentiment[, 9:10]))), 
+  horiz = FALSE, 
+  cex.names = 0.7, 
+  las = 1, 
+  main = "Before game", xlab="Percentage",
+  col = c("#E69F00","blue")
+)
+
+p2 = barplot(
+  sort(colSums(prop.table(b_Q1_nrc_sentiment[, 9:10]))), 
+  horiz = FALSE, 
+  cex.names = 0.7, 
+  las = 1, 
+  main = "Q1", xlab="Percentage",
+  col = c("#E69F00","blue")
+)
+
+p3 = barplot(
+  sort(colSums(prop.table(b_Q2_nrc_sentiment[, 9:10]))), 
+  horiz = FALSE, 
+  cex.names = 0.7, 
+  las = 1, 
+  main = "Q2", xlab="Percentage",
+  col = c("#E69F00","blue")
+)
+
+p4 = barplot(
+  sort(colSums(prop.table(b_half_nrc_sentiment[, 9:10]))), 
+  horiz = FALSE, 
+  cex.names = 0.7, 
+  las = 1, 
+  main = "Halftime", xlab="Percentage",
+  col = c("#E69F00","blue")
+)
+
+p5 = barplot(
+  sort(colSums(prop.table(b_Q3_nrc_sentiment[, 9:10]))), 
+  horiz = FALSE, 
+  cex.names = 0.7, 
+  las = 1, 
+  main = "Q3", xlab="Percentage",
+  col = c("#E69F00","blue")
+)
+
+p6 = barplot(
+  sort(colSums(prop.table(b_Q4_nrc_sentiment[, 9:10]))), 
+  horiz = FALSE, 
+  cex.names = 0.7, 
+  las = 1, 
+  main = "Q4", xlab="Percentage",
+  col = c("#E69F00","blue")
+)
+
+p7 = barplot(
+  sort(colSums(prop.table(b_post_nrc_sentiment[, 9:10]))), 
+  horiz = FALSE, 
+  cex.names = 0.7, 
+  las = 1, 
+  main = "Post Game", xlab="Percentage",
+  col = c("#E69F00","blue")
+)
+
+```
+
+```{r}
+# Heat
+heat_pre = data_heat%>%
+  filter(data_heat$`Time Frame` == "Before Game")
+
+heat_Q1 = data_heat%>%
+  filter(data_heat$`Time Frame` == "Q1")
+
+heat_Q2 = data_heat%>%
+  filter(data_heat$`Time Frame` == "Q2")
+
+heat_half = data_heat%>%
+  filter(data_heat$`Time Frame` == "Halftime")
+
+heat_Q3 = data_heat%>%
+  filter(data_heat$`Time Frame` == "Q3")
+
+heat_Q4 = data_heat%>%
+  filter(data_heat$`Time Frame` == "Q4")
+
+heat_post = data_heat%>%
+  filter(data_heat$`Time Frame` == "Post Game")
+```
+
+```{r}
+h_before_nrc_sentiment <- get_nrc_sentiment(heat_pre$tweet)
+h_half_nrc_sentiment <- get_nrc_sentiment(heat_half$tweet)
+h_post_nrc_sentiment <- get_nrc_sentiment(heat_post$tweet)
+h_Q1_nrc_sentiment <- get_nrc_sentiment(heat_Q1$tweet)
+h_Q2_nrc_sentiment <- get_nrc_sentiment(heat_Q2$tweet)
+h_Q3_nrc_sentiment <- get_nrc_sentiment(heat_Q3$tweet)
+h_Q4_nrc_sentiment <- get_nrc_sentiment(heat_Q4$tweet)
+```
+
+```{r}
+par(mfrow = c(2, 4))
+p1 = barplot(
+  sort(colSums(prop.table(h_before_nrc_sentiment[, 9:10]))), 
+  horiz = FALSE, 
+  cex.names = 0.7, 
+  las = 1, 
+  main = "Before game", xlab="Percentage",
+  col = c("#E69F00","blue")
+)
+
+p2 = barplot(
+  sort(colSums(prop.table(h_Q1_nrc_sentiment[, 9:10]))), 
+  horiz = FALSE, 
+  cex.names = 0.7, 
+  las = 1, 
+  main = "Q1", xlab="Percentage",
+  col = c("#E69F00","blue")
+)
+
+p3 = barplot(
+  sort(colSums(prop.table(h_Q2_nrc_sentiment[, 9:10]))), 
+  horiz = FALSE, 
+  cex.names = 0.7, 
+  las = 1, 
+  main = "Q2", xlab="Percentage",
+  col = c("#E69F00","blue")
+)
+
+p4 = barplot(
+  sort(colSums(prop.table(h_half_nrc_sentiment[, 9:10]))), 
+  horiz = FALSE, 
+  cex.names = 0.7, 
+  las = 1, 
+  main = "Halftime", xlab="Percentage",
+  col = c("#E69F00","blue")
+)
+
+p5 = barplot(
+  sort(colSums(prop.table(h_Q3_nrc_sentiment[, 9:10]))), 
+  horiz = FALSE, 
+  cex.names = 0.7, 
+  las = 1, 
+  main = "Q3", xlab="Percentage",
+  col = c("blue","#E69F00")
+)
+
+p6 = barplot(
+  sort(colSums(prop.table(h_Q4_nrc_sentiment[, 9:10]))), 
+  horiz = FALSE, 
+  cex.names = 0.7, 
+  las = 1, 
+  main = "Q4", xlab="Percentage",
+  col = c("blue","#E69F00")
+)
+
+p7 = barplot(
+  sort(colSums(prop.table(h_post_nrc_sentiment[, 9:10]))), 
+  horiz = FALSE, 
+  cex.names = 0.7, 
+  las = 1, 
+  main = "Post Game", xlab="Percentage",
+  col = c("#E69F00","blue")
+)
+```
+
+
+
+### Correlation
+```{r}
+# Import combined data with senntiment analysis
+new = read_excel("/Users/rachel/Desktop/MIA vs BOS - Game 5 - Combined Data V3_SentimentAnalysis.xlsx")
+View(new)
+
+Score_diff = abs(new$`MIA Score Differential`)
+new = cbind(new,Score_diff)
+data1 = new %>%
+  filter(new$`Time Frame` == "Q1" | new$`Time Frame` == "Q2" | new$`Time Frame` == "Q3" | new$`Time Frame` == "Q4" )
+
+cor(data1$retweet_count,data1$negative)
+cor(data1$retweet_count,data1$positive)
+```
+
+```{r}
+cor(data1$`Score_diff`,data1$positive)
+cor(data1$`Score_diff`,data1$negative)
+```
+
+```{r}
+# Boston Score Difference vs Sentiment
+boston = new %>%
+  filter(Category == "Celtics")
+
+cor(boston$`BOS Score Differential`,boston$positive)
+cor(boston$`BOS Score Differential`,boston$negative)
+```
+
+```{r}
+# Miami Score Difference vs Sentiment
+heat = new %>%
+  filter(Category == "Heat")
+
+cor(heat$`MIA Score Differential`,heat$positive)
+cor(heat$`MIA Score Differential`,heat$negative)
+```
+
